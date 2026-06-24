@@ -1,15 +1,71 @@
 classDiagram
-    %% Replace the placeholders below with your actual classes, attributes, methods, and relationships.
-    %% Keep this file updated so it matches your final implementation.
+    %% PawPal+ — pet care scheduling app
+    %% Update this file so it matches your final Python implementation.
 
-    class ClassName {
-        +type attribute
-        +method() returnType
+    class Pet {
+        +str name
+        +int age
+        +float weight
+        +str gender
+        +bool fed
+        +bool needs_meds
+        +bool needs_grooming
+        +bool needs_enrichment
+        +feed() None
+        +give_meds() None
+        +record_weight(float kg) None
+        +care_summary() str
     }
 
-    class AnotherClass {
-        +type attribute
-        +method() returnType
+    class Owner {
+        +str name
+        +int age
+        +str gender
+        +list~Pet~ pets
+        +int available_minutes
+        +add_pet(Pet pet) None
+        +add_task(Task task) None
+        +list_tasks() list~Task~
     }
 
-    ClassName --> AnotherClass : relationship
+    class Task {
+        +str name
+        +int duration_min
+        +Priority priority
+        +Status status
+        +str goal
+        +list~str~ constraints
+        +mark_done() None
+        +is_done() bool
+    }
+
+    class Scheduler {
+        +Owner owner
+        +list~Task~ tasks
+        +make_schedule() list~Task~
+        +sort_by_priority() list~Task~
+        +fits_in_time(int budget) list~Task~
+        +explain() str
+    }
+
+    class Priority {
+        <<enumeration>>
+        LOW
+        MEDIUM
+        HIGH
+    }
+
+    class Status {
+        <<enumeration>>
+        PENDING
+        DONE
+        SKIPPED
+    }
+
+    Owner "1" --> "*" Pet : owns
+    Owner "1" --> "*" Task : assigns
+    Task "*" --> "1" Pet : for
+    Task --> Priority : has
+    Task --> Status : has
+    Scheduler --> Owner : plans for
+    Scheduler --> Task : orders

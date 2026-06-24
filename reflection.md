@@ -5,7 +5,9 @@
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+    - Need to design a pet class that can contain all of the pets attributes and all the goals we want to accomplish. Also creating another class that will hold on the constriaints priorities and needs that we want to accomplish so the goals. One last class that will take in the pet and the constraints to and all the needed info to design a plan.
 - What classes did you include, and what responsibilities did you assign to each?
+    - I have thought about using a pet class the holds the responsibilty of putting all the pet's info into this and being able to track it's description and attributes. Another class would be Goals and Constraints, in here I want to keep track of all the constraints that are placed on that day. Than being able to have all the constraints also add the priorities and minimums of what should be done or what is wanted to get done. This would be likr goals or something that is needed to get done. Also adding a schedule class that would take in a pet object and constraints object that correspond to each other. Takin care of planning out the day, so taking in constraints, the pet and what can be done in that day and returning it. Lastly adding an Owner's class that holds information on the owner. Whether this may be something more aobut the descroption and attributes of the owner and the goals od the owner is what it would hold. 
 
 **b. Design changes**
 
