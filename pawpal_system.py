@@ -117,6 +117,7 @@ class Scheduler:
     """Builds one combined daily plan across all of an owner's pets."""
 
     def __init__(self, owner: Owner) -> None:
+        """Create a scheduler for the given owner with an empty task plan."""
         self.owner = owner
         self.tasks: list[Task] = []
 
