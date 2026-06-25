@@ -122,25 +122,24 @@ class Scheduler:
 
     def make_schedule(self) -> list[Task]:
         """Produce the ordered daily plan that fits the owner's time budget."""
+        self.tasks = list(self.owner.tasks)
+        self.tasks = self.sort_by_priority()
         self.tasks = self.fits_in_time(self.owner.available_minutes)
         return self.tasks
 
-
     def sort_by_priority(self) -> list[Task]:
-        """Return tasks ordered HIGH -> LOW (tie-break by duration)."""
-        tasks = sorted(self.owner.tasks, key=lambda t: (-t.priority.value, t.duration_min))
-        print(tasks)
-        return tasks
+        """Return tasks ordered HIGH -> LOW (tie-break by shorter duration)."""
+        return sorted(self.tasks, key=lambda t: (-t.priority.value, t.duration_min))
 
     def fits_in_time(self, budget: int) -> list[Task]:
         """Return the subset of tasks that fits within the given minutes."""
-        priority_sorted_tasks = self.sort_by_priority()
-        while priority_sorted_tasks and self.owner.available_minutes > 0:
-            task = priority_sorted_tasks.pop(0)
-            if task.duration_min <= self.owner.available_minutes:
-                self.tasks.append(task)
-                self.owner.available_minutes -= task.duration_min
-        return self.tasks
+        plan: list[Task] = []
+        remaining = budget
+        for task in self.tasks:
+            if task.duration_min <= remaining:
+                plan.append(task)
+                remaining -= task.duration_min
+        return plan
 
     def explain(self) -> str:
         """Explain why the schedule was built the way it was."""
