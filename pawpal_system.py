@@ -41,20 +41,31 @@ class Pet:
 
     def feed(self) -> None:
         """Mark this pet as fed."""
-        raise NotImplementedError
+        self.fed = True
 
     def give_meds(self) -> None:
         """Record that this pet has had its medication."""
-        raise NotImplementedError
+        self.needs_meds = False
 
     def record_weight(self, kg: float) -> None:
         """Update the pet's recorded weight."""
-        raise NotImplementedError
+        self.weight = kg
 
     def care_summary(self) -> str:
         """Return a short human-readable summary of outstanding care needs."""
-        raise NotImplementedError
-
+        print(f"Care summary for {self.name}:")
+        needs = []
+        if not self.fed:
+            needs.append("needs feeding")
+        if self.needs_meds:
+            needs.append("needs medication")
+        if self.needs_grooming:
+            needs.append("needs grooming")
+        if self.needs_enrichment:
+            needs.append("needs enrichment")
+        if not needs:
+            return "All care needs are met."
+        return ", ".join(needs)
 
 @dataclass
 class Task:
@@ -70,11 +81,11 @@ class Task:
 
     def mark_done(self) -> None:
         """Mark this task as completed."""
-        raise NotImplementedError
+        self.status = Status.DONE
 
     def is_done(self) -> bool:
         """Return True if the task has been completed."""
-        raise NotImplementedError
+        return self.status == Status.DONE
 
 
 @dataclass
@@ -90,15 +101,16 @@ class Owner:
 
     def add_pet(self, pet: Pet) -> None:
         """Register a pet as belonging to this owner."""
-        raise NotImplementedError
+        self.pets.append(pet)
 
     def add_task(self, task: Task) -> None:
         """Assign a care task (for one of this owner's pets)."""
-        raise NotImplementedError
+        self.tasks.append(task)
 
     def list_tasks(self) -> list[Task]:
         """Return all tasks across all of this owner's pets."""
-        raise NotImplementedError
+        for task in self.tasks:
+            print(f"Task: {task.name}, Pet: {task.pet.name}, Duration: {task.duration_min} min, Priority: {task.priority.name}, Status: {task.status.value}")
 
 
 class Scheduler:
@@ -110,16 +122,31 @@ class Scheduler:
 
     def make_schedule(self) -> list[Task]:
         """Produce the ordered daily plan that fits the owner's time budget."""
-        raise NotImplementedError
+        self.tasks = self.fits_in_time(self.owner.available_minutes)
+        return self.tasks
+
 
     def sort_by_priority(self) -> list[Task]:
         """Return tasks ordered HIGH -> LOW (tie-break by duration)."""
-        raise NotImplementedError
+        tasks = sorted(self.owner.tasks, key=lambda t: (-t.priority.value, t.duration_min))
+        print(tasks)
+        return tasks
 
     def fits_in_time(self, budget: int) -> list[Task]:
         """Return the subset of tasks that fits within the given minutes."""
-        raise NotImplementedError
+        priority_sorted_tasks = self.sort_by_priority()
+        while priority_sorted_tasks and self.owner.available_minutes > 0:
+            task = priority_sorted_tasks.pop(0)
+            if task.duration_min <= self.owner.available_minutes:
+                self.tasks.append(task)
+                self.owner.available_minutes -= task.duration_min
+        return self.tasks
 
     def explain(self) -> str:
         """Explain why the schedule was built the way it was."""
-        raise NotImplementedError
+        explanation = "Schedule Explanation:\n"
+        explanation += f"Owner: {self.owner.name}, Available Minutes: {self.owner.available_minutes}\n"
+        explanation += "Scheduled Tasks:\n"
+        for task in self.tasks:
+            explanation += f"- Task: {task.name}, Pet: {task.pet.name}, Duration: {task.duration_min} min, Priority: {task.priority.name}, Status: {task.status.value}\n"
+        return explanation

@@ -12,7 +12,9 @@
 **b. Design changes**
 
 - Did your design change during implementation?
+    - During the implementation my design did chage.
 - If yes, describe at least one change and why you made it.
+    - During my initial design I had a larger idea of adding multiple classes and subclasses to all account for different things. Inside of my Tasks class I wanted to make a subclass, that would track the state of a task was it done, pending, or not started. I asked the AI and it instead suggested to make it an Enum which would make it much easier to keep track of state of tasks. As I continued going through my tasks I asked for missing relationships and one of the biggest ideas i had forgotten was owners could have multiple pets. I did not take this into account and the AI pointed it out and helped me implement. At first I thought to only allow one pet per owner rather than a list of pets for the owner. I changed this to allow for multiple pets.
 
 ---
 
