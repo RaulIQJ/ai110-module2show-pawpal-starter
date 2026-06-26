@@ -76,6 +76,7 @@ class Task:
     priority: Priority
     pet: Pet
     status: Status = Status.PENDING
+    start_time: str = ""  # scheduled clock time, "HH:MM" (24-hour), e.g. "09:30"
     goal: str = ""
     constraints: list[str] = field(default_factory=list)
 
@@ -131,6 +132,22 @@ class Scheduler:
     def sort_by_priority(self) -> list[Task]:
         """Return tasks ordered HIGH -> LOW (tie-break by shorter duration)."""
         return sorted(self.tasks, key=lambda t: (-t.priority.value, t.duration_min))
+
+    def sort_by_time(self) -> list[Task]:
+        """Return tasks ordered by start_time ("HH:MM"), earliest first.
+
+        The lambda key turns each "HH:MM" string into total minutes since
+        midnight (HH * 60 + MM) so they compare as numbers. Tasks with no
+        start_time set sort last.
+        """
+        return sorted(
+            self.tasks,
+            key=lambda t: (
+                int(t.start_time.split(":")[0]) * 60 + int(t.start_time.split(":")[1])
+                if t.start_time
+                else 24 * 60  # unscheduled tasks go to the end
+            ),
+        )
 
     def fits_in_time(self, budget: int) -> list[Task]:
         """Return the subset of tasks that fits within the given minutes."""
