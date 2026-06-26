@@ -1,5 +1,7 @@
+from datetime import time
+
 import streamlit as st
-from pawpal_system import Owner, Pet, Priority, Scheduler, Task
+from pawpal_system import Owner, Pet, Priority, Scheduler, Status, Task
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
@@ -106,6 +108,8 @@ else:
             "Duration (minutes)", min_value=1, max_value=240, value=20
         )
         priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
+        # st.time_input returns a datetime.time, so no manual HH:MM parsing.
+        start = st.time_input("Start time", value=time(8, 0))
         # Choosing a pet here is what assigns the Task to that pet.
         pet = st.selectbox(
             "For which pet?", options=owner.pets, format_func=lambda p: p.name
@@ -118,6 +122,7 @@ else:
                 duration_min=int(duration),
                 priority=PRIORITY_MAP[priority],
                 pet=pet,
+                start_time=start.strftime("%H:%M"),  # stored as "HH:MM"
             )
         )
         st.rerun()
@@ -125,17 +130,52 @@ else:
     tasks = owner.list_tasks()
     if tasks:
         st.write("Current tasks:")
-        st.table(
-            [
-                {
-                    "task": t.name,
-                    "pet": t.pet.name,
-                    "duration_min": t.duration_min,
-                    "priority": t.priority.name,
-                }
-                for t in tasks
-            ]
-        )
+
+        # --- filters (use the Scheduler's filter methods) ------------------
+        sched = Scheduler(owner)
+        STATUS_FILTERS = {"pending": Status.PENDING, "done": Status.DONE}
+        col_a, col_b = st.columns(2)
+        with col_a:
+            status_choice = st.selectbox("Filter by status", ["all", "pending", "done"])
+        with col_b:
+            pet_choice = st.selectbox(
+                "Filter by pet", ["all"] + [p.name for p in owner.pets]
+            )
+
+        shown = tasks
+        if status_choice != "all":
+            shown = sched.filter_by_status(STATUS_FILTERS[status_choice], shown)
+        if pet_choice != "all":
+            shown = sched.filter_by_pet(pet_choice, shown)
+
+        if shown:
+            st.table(
+                [
+                    {
+                        "task": t.name,
+                        "pet": t.pet.name,
+                        "start": t.start_time or "—",
+                        "duration_min": t.duration_min,
+                        "priority": t.priority.name,
+                        "status": t.status.value,
+                    }
+                    for t in shown
+                ]
+            )
+        else:
+            st.caption("No tasks match the current filters.")
+
+        # --- mark a task complete -----------------------------------------
+        pending = [t for t in tasks if t.status != Status.DONE]
+        if pending:
+            to_complete = st.selectbox(
+                "Mark a task complete",
+                options=pending,
+                format_func=lambda t: f"{t.name} ({t.pet.name}, {t.start_time or 'no time'})",
+            )
+            if st.button("Mark complete"):
+                to_complete.mark_done()
+                st.rerun()
     else:
         st.info("No tasks yet. Add one above.")
 
@@ -159,23 +199,31 @@ if st.button("Generate schedule", disabled=not all_tasks):
     if not plan:
         st.warning("No tasks fit the available time.")
     else:
+        # Priority + budget decide WHAT gets in; time decides the ORDER shown.
+        plan_by_time = scheduler.sort_by_time()
         total = sum(t.duration_min for t in plan)
         st.write(f"### Today's plan for {owner.name}")
         st.table(
             [
                 {
                     "#": i,
+                    "start": t.start_time or "—",
                     "task": t.name,
                     "pet": t.pet.name,
                     "duration_min": t.duration_min,
                     "priority": t.priority.name,
                 }
-                for i, t in enumerate(plan, start=1)
+                for i, t in enumerate(plan_by_time, start=1)
             ]
         )
         st.caption(f"Total scheduled: {total}/{owner.available_minutes} min")
 
-        dropped = [t for t in all_tasks if t not in plan]
+        # Conflict warnings (overlapping start times) — informative, not fatal.
+        for warning in scheduler.detect_conflicts():
+            st.warning(f"Time conflict: {warning}")
+
+        # Only count active tasks as "dropped" (DONE tasks are intentionally skipped).
+        dropped = [t for t in all_tasks if t not in plan and t.status != Status.DONE]
         if dropped:
             st.write("**Dropped (did not fit / lower priority):**")
             for t in dropped:

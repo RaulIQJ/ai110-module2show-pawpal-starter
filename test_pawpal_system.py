@@ -202,3 +202,99 @@ def test_owner_list_tasks_aggregates_across_all_pets(pet, other_pet):
 
     assert len(all_tasks) == 2
     assert {t.pet.name for t in all_tasks} == {"Biscuit", "Whiskers"}
+
+
+# --- sort_by_time ----------------------------------------------------------
+
+
+def test_sort_by_time_orders_chronologically(pet):
+    sched = Scheduler(Owner(name="Ada", age=30))
+    late = Task("late", 10, Priority.LOW, pet, start_time="14:00")
+    early = Task("early", 10, Priority.LOW, pet, start_time="08:30")
+    mid = Task("mid", 10, Priority.LOW, pet, start_time="09:15")
+    sched.tasks = [late, early, mid]
+
+    assert sched.sort_by_time() == [early, mid, late]
+
+
+def test_sort_by_time_puts_unscheduled_last(pet):
+    sched = Scheduler(Owner(name="Ada", age=30))
+    timed = Task("timed", 10, Priority.LOW, pet, start_time="10:00")
+    untimed = Task("untimed", 10, Priority.LOW, pet)  # start_time == ""
+    sched.tasks = [untimed, timed]
+
+    assert sched.sort_by_time() == [timed, untimed]
+
+
+# --- filtering -------------------------------------------------------------
+
+
+def test_filter_by_status_splits_pending_and_done(pet):
+    owner = Owner(name="Ada", age=30)
+    owner.add_pet(pet)
+    done = make_task("done", 10, Priority.LOW, pet)
+    done.mark_done()
+    pending = make_task("pending", 10, Priority.LOW, pet)
+    owner.add_task(done)
+    owner.add_task(pending)
+    sched = Scheduler(owner)
+
+    assert sched.filter_by_status(Status.DONE) == [done]
+    assert sched.filter_by_status(Status.PENDING) == [pending]
+
+
+def test_filter_by_pet_returns_only_that_pets_tasks(pet, other_pet):
+    owner = Owner(name="Ada", age=30)
+    owner.add_pet(pet)
+    owner.add_pet(other_pet)
+    biscuit_task = make_task("walk", 10, Priority.LOW, pet)
+    whiskers_task = make_task("meds", 10, Priority.LOW, other_pet)
+    owner.add_task(biscuit_task)
+    owner.add_task(whiskers_task)
+    sched = Scheduler(owner)
+
+    assert sched.filter_by_pet("Biscuit") == [biscuit_task]
+
+
+# --- conflict detection ----------------------------------------------------
+
+
+def test_detect_conflicts_flags_overlapping_tasks(pet):
+    owner = Owner(name="Ada", age=30)
+    owner.add_pet(pet)
+    # 08:00-08:30 overlaps a task that starts at 08:15
+    owner.add_task(Task("walk", 30, Priority.HIGH, pet, start_time="08:00"))
+    owner.add_task(Task("meds", 5, Priority.HIGH, pet, start_time="08:15"))
+    sched = Scheduler(owner)
+
+    assert len(sched.detect_conflicts()) == 1
+
+
+def test_detect_conflicts_none_when_back_to_back(pet):
+    owner = Owner(name="Ada", age=30)
+    owner.add_pet(pet)
+    # 08:00-08:30 then 08:30 start: touching, not overlapping
+    owner.add_task(Task("walk", 30, Priority.HIGH, pet, start_time="08:00"))
+    owner.add_task(Task("meds", 5, Priority.HIGH, pet, start_time="08:30"))
+    sched = Scheduler(owner)
+
+    assert sched.detect_conflicts() == []
+
+
+# --- make_schedule skips completed tasks -----------------------------------
+
+
+def test_make_schedule_skips_done_tasks(pet):
+    owner = Owner(name="Ada", age=30, available_minutes=120)
+    owner.add_pet(pet)
+    done = make_task("done walk", 30, Priority.HIGH, pet)
+    done.mark_done()
+    pending = make_task("meds", 5, Priority.HIGH, pet)
+    owner.add_task(done)
+    owner.add_task(pending)
+    sched = Scheduler(owner)
+
+    plan = sched.make_schedule()
+
+    assert done not in plan
+    assert pending in plan

@@ -10,6 +10,22 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 
+def hhmm_to_minutes(value: str) -> int:
+    """Convert a "HH:MM" string to minutes since midnight.
+
+    An empty string returns 24*60 (end of day) so unscheduled tasks sort last.
+    """
+    if not value:
+        return 24 * 60
+    hours, minutes = value.split(":")
+    return int(hours) * 60 + int(minutes)
+
+
+def minutes_to_hhmm(total: int) -> str:
+    """Convert minutes since midnight back into a "HH:MM" string."""
+    return f"{total // 60:02d}:{total % 60:02d}"
+
+
 class Priority(Enum):
     """How important a task is, used by the scheduler to order tasks."""
 
@@ -134,8 +150,11 @@ class Scheduler:
         self.tasks: list[Task] = []
 
     def make_schedule(self) -> list[Task]:
-        """Produce the ordered daily plan that fits the owner's time budget."""
-        self.tasks = self.owner.list_tasks()
+        """Produce the ordered daily plan that fits the owner's time budget.
+
+        Already-completed (DONE) tasks are skipped so they are never re-planned.
+        """
+        self.tasks = [t for t in self.owner.list_tasks() if t.status != Status.DONE]
         self.tasks = self.sort_by_priority()
         self.tasks = self.fits_in_time(self.owner.available_minutes)
         return self.tasks
@@ -147,18 +166,59 @@ class Scheduler:
     def sort_by_time(self) -> list[Task]:
         """Return tasks ordered by start_time ("HH:MM"), earliest first.
 
-        The lambda key turns each "HH:MM" string into total minutes since
-        midnight (HH * 60 + MM) so they compare as numbers. Tasks with no
-        start_time set sort last.
+        The lambda key turns each "HH:MM" string into minutes since midnight
+        (via hhmm_to_minutes) so the times compare as numbers. Tasks with no
+        start_time sort last.
         """
-        return sorted(
-            self.tasks,
-            key=lambda t: (
-                int(t.start_time.split(":")[0]) * 60 + int(t.start_time.split(":")[1])
-                if t.start_time
-                else 24 * 60  # unscheduled tasks go to the end
+        return sorted(self.tasks, key=lambda t: hhmm_to_minutes(t.start_time))
+
+    def filter_by_status(
+        self, status: Status, tasks: list[Task] | None = None
+    ) -> list[Task]:
+        """Return only the tasks with the given status (e.g. PENDING or DONE).
+
+        Reads all of the owner's tasks by default, or filters a list you pass in
+        (so filters can be chained, e.g. by status then by pet).
+        """
+        source = self.owner.list_tasks() if tasks is None else tasks
+        return [t for t in source if t.status == status]
+
+    def filter_by_pet(
+        self, pet_name: str, tasks: list[Task] | None = None
+    ) -> list[Task]:
+        """Return only the tasks belonging to the pet with the given name."""
+        source = self.owner.list_tasks() if tasks is None else tasks
+        return [t for t in source if t.pet.name == pet_name]
+
+    def detect_conflicts(self) -> list[str]:
+        """Return a warning string for each pair of tasks whose times overlap.
+
+        Lightweight: only considers active (non-DONE) tasks that have a
+        start_time. Two tasks overlap when one starts before the other ends,
+        using start_time + duration_min. Returns [] when there are no
+        conflicts — it never raises.
+        """
+        timed = sorted(
+            (
+                t
+                for t in self.owner.list_tasks()
+                if t.start_time and t.status != Status.DONE
             ),
+            key=lambda t: hhmm_to_minutes(t.start_time),
         )
+        warnings: list[str] = []
+        for i, earlier in enumerate(timed):
+            earlier_end = hhmm_to_minutes(earlier.start_time) + earlier.duration_min
+            for later in timed[i + 1 :]:
+                # list is sorted by start, so later starts >= earlier starts
+                if hhmm_to_minutes(later.start_time) < earlier_end:
+                    warnings.append(
+                        f"'{earlier.name}' ({earlier.pet.name}, "
+                        f"{earlier.start_time}-{minutes_to_hhmm(earlier_end)}) "
+                        f"overlaps '{later.name}' ({later.pet.name}, "
+                        f"starts {later.start_time})"
+                    )
+        return warnings
 
     def fits_in_time(self, budget: int) -> list[Task]:
         """Return the subset of tasks that fits within the given minutes."""
