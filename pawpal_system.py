@@ -38,6 +38,19 @@ class Pet:
     needs_meds: bool = False
     needs_grooming: bool = False
     needs_enrichment: bool = False
+    # This pet's own care tasks. repr/compare disabled to break the
+    # Pet <-> Task reference cycle (Task.pet points back here), which would
+    # otherwise make the dataclass __repr__ / __eq__ recurse forever.
+    tasks: list[Task] = field(default_factory=list, repr=False, compare=False)
+
+    def add_task(self, task: Task) -> None:
+        """Attach a care task to this pet (keeps task.pet pointing back here)."""
+        task.pet = self
+        self.tasks.append(task)
+
+    def task_count(self) -> int:
+        """Return how many tasks this pet currently has."""
+        return len(self.tasks)
 
     def feed(self) -> None:
         """Mark this pet as fed."""
@@ -98,20 +111,18 @@ class Owner:
     gender: str = ""
     available_minutes: int = 0
     pets: list[Pet] = field(default_factory=list)
-    tasks: list[Task] = field(default_factory=list)
 
     def add_pet(self, pet: Pet) -> None:
         """Register a pet as belonging to this owner."""
         self.pets.append(pet)
 
     def add_task(self, task: Task) -> None:
-        """Assign a care task (for one of this owner's pets)."""
-        self.tasks.append(task)
+        """Assign a care task by routing it to its pet (task.pet)."""
+        task.pet.add_task(task)
 
     def list_tasks(self) -> list[Task]:
-        """Return all tasks across all of this owner's pets."""
-        for task in self.tasks:
-            print(f"Task: {task.name}, Pet: {task.pet.name}, Duration: {task.duration_min} min, Priority: {task.priority.name}, Status: {task.status.value}")
+        """Return all tasks across all of this owner's pets (flattened)."""
+        return [task for pet in self.pets for task in pet.tasks]
 
 
 class Scheduler:
@@ -124,7 +135,7 @@ class Scheduler:
 
     def make_schedule(self) -> list[Task]:
         """Produce the ordered daily plan that fits the owner's time budget."""
-        self.tasks = list(self.owner.tasks)
+        self.tasks = self.owner.list_tasks()
         self.tasks = self.sort_by_priority()
         self.tasks = self.fits_in_time(self.owner.available_minutes)
         return self.tasks

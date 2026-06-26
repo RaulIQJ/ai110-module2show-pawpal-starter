@@ -122,7 +122,8 @@ else:
         )
         st.rerun()
 
-    if owner.tasks:
+    tasks = owner.list_tasks()
+    if tasks:
         st.write("Current tasks:")
         st.table(
             [
@@ -132,7 +133,7 @@ else:
                     "duration_min": t.duration_min,
                     "priority": t.priority.name,
                 }
-                for t in owner.tasks
+                for t in tasks
             ]
         )
     else:
@@ -149,7 +150,8 @@ available_minutes = st.number_input(
     "Available minutes today", min_value=0, max_value=1440, value=60
 )
 
-if st.button("Generate schedule", disabled=not owner.tasks):
+all_tasks = owner.list_tasks()
+if st.button("Generate schedule", disabled=not all_tasks):
     owner.available_minutes = int(available_minutes)
     scheduler = Scheduler(owner)
     plan = scheduler.make_schedule()
@@ -173,7 +175,7 @@ if st.button("Generate schedule", disabled=not owner.tasks):
         )
         st.caption(f"Total scheduled: {total}/{owner.available_minutes} min")
 
-        dropped = [t for t in owner.tasks if t not in plan]
+        dropped = [t for t in all_tasks if t not in plan]
         if dropped:
             st.write("**Dropped (did not fit / lower priority):**")
             for t in dropped:
@@ -182,5 +184,5 @@ if st.button("Generate schedule", disabled=not owner.tasks):
     with st.expander("Why this schedule?"):
         st.text(scheduler.explain())
 
-if not owner.tasks:
+if not all_tasks:
     st.info("Add at least one task to build a schedule.")

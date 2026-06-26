@@ -116,11 +116,10 @@ def test_fits_in_time_zero_budget_returns_empty(pet):
 
 def test_make_schedule_combines_tasks_from_all_pets(pet, other_pet):
     owner = Owner(name="Ada", age=30, available_minutes=120)
-    owner.pets = [pet, other_pet]
-    owner.tasks = [
-        make_task("Biscuit walk", 30, Priority.HIGH, pet),
-        make_task("Whiskers meds", 5, Priority.HIGH, other_pet),
-    ]
+    owner.add_pet(pet)
+    owner.add_pet(other_pet)
+    owner.add_task(make_task("Biscuit walk", 30, Priority.HIGH, pet))
+    owner.add_task(make_task("Whiskers meds", 5, Priority.HIGH, other_pet))
     sched = Scheduler(owner)
 
     plan = sched.make_schedule()
@@ -131,10 +130,9 @@ def test_make_schedule_combines_tasks_from_all_pets(pet, other_pet):
 
 def test_make_schedule_orders_by_priority(pet):
     owner = Owner(name="Ada", age=30, available_minutes=120)
-    owner.tasks = [
-        make_task("enrichment", 20, Priority.LOW, pet),
-        make_task("meds", 5, Priority.HIGH, pet),
-    ]
+    owner.add_pet(pet)
+    owner.add_task(make_task("enrichment", 20, Priority.LOW, pet))
+    owner.add_task(make_task("meds", 5, Priority.HIGH, pet))
     sched = Scheduler(owner)
 
     plan = sched.make_schedule()
@@ -144,10 +142,12 @@ def test_make_schedule_orders_by_priority(pet):
 
 def test_make_schedule_respects_time_budget_dropping_low_priority(pet):
     owner = Owner(name="Ada", age=30, available_minutes=35)
+    owner.add_pet(pet)
     must_do = make_task("meds", 5, Priority.HIGH, pet)
     walk = make_task("walk", 30, Priority.HIGH, pet)
     extra = make_task("long enrichment", 30, Priority.LOW, pet)
-    owner.tasks = [extra, walk, must_do]
+    for t in (extra, walk, must_do):
+        owner.add_task(t)
     sched = Scheduler(owner)
 
     plan = sched.make_schedule()
@@ -178,3 +178,27 @@ def test_mark_done_sets_status_done(pet):
     t.mark_done()
     assert t.is_done() is True
     assert t.status == Status.DONE
+
+
+# --- Pet / Owner task ownership --------------------------------------------
+
+
+def test_adding_task_to_pet_increases_task_count(pet):
+    assert pet.task_count() == 0
+    pet.add_task(make_task("walk", 30, Priority.HIGH, pet))
+    assert pet.task_count() == 1
+    pet.add_task(make_task("meds", 5, Priority.HIGH, pet))
+    assert pet.task_count() == 2
+
+
+def test_owner_list_tasks_aggregates_across_all_pets(pet, other_pet):
+    owner = Owner(name="Ada", age=30)
+    owner.add_pet(pet)
+    owner.add_pet(other_pet)
+    owner.add_task(make_task("Biscuit walk", 30, Priority.HIGH, pet))
+    owner.add_task(make_task("Whiskers meds", 5, Priority.HIGH, other_pet))
+
+    all_tasks = owner.list_tasks()
+
+    assert len(all_tasks) == 2
+    assert {t.pet.name for t in all_tasks} == {"Biscuit", "Whiskers"}

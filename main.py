@@ -47,7 +47,7 @@ def main() -> None:
     print(f"\nTotal scheduled: {total}/{owner.available_minutes} min")
 
     # tasks that did not make the cut
-    skipped = [t for t in owner.tasks if t not in plan]
+    skipped = [t for t in owner.list_tasks() if t not in plan]
     if skipped:
         print("\nDropped (did not fit / lower priority):")
         for task in skipped:
