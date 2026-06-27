@@ -117,9 +117,12 @@ else:
         # st.time_input returns a datetime.time, so no manual HH:MM parsing.
         start = st.time_input("Start time", value=time(8, 0))
         repeat = st.selectbox("Repeat", ["one-off", "daily", "weekly"])
-        # Choosing a pet here is what assigns the Task to that pet.
-        pet = st.selectbox(
-            "For which pet?", options=owner.pets, format_func=lambda p: p.name
+        # Select by INDEX, not the Pet object: Streamlit returns a *copy* of a
+        # selected object, so we must look the real pet back up in owner.pets.
+        pet_index = st.selectbox(
+            "For which pet?",
+            options=range(len(owner.pets)),
+            format_func=lambda i: owner.pets[i].name,
         )
         add_task = st.form_submit_button("Add task")
     if add_task:
@@ -128,7 +131,7 @@ else:
                 name=task_title,
                 duration_min=int(duration),
                 priority=PRIORITY_MAP[priority],
-                pet=pet,
+                pet=owner.pets[pet_index],  # the real, persisted Pet object
                 start_time=start.strftime("%H:%M"),  # stored as "HH:MM"
                 frequency=FREQUENCY_MAP[repeat],
             )
@@ -180,15 +183,19 @@ else:
             st.caption("No tasks match the current filters.")
 
         # --- mark a task complete -----------------------------------------
-        pending = [t for t in tasks if t.status != Status.DONE]
-        if pending:
-            to_complete = st.selectbox(
+        # Index into the live task list (same copy-on-select caveat as above).
+        pending_indexes = [i for i, t in enumerate(tasks) if t.status != Status.DONE]
+        if pending_indexes:
+            chosen = st.selectbox(
                 "Mark a task complete",
-                options=pending,
-                format_func=lambda t: f"{t.name} ({t.pet.name}, {t.start_time or 'no time'})",
+                options=pending_indexes,
+                format_func=lambda i: (
+                    f"{tasks[i].name} ({tasks[i].pet.name}, "
+                    f"{tasks[i].start_time or 'no time'})"
+                ),
             )
             if st.button("Mark complete"):
-                next_task = to_complete.mark_done()
+                next_task = tasks[chosen].mark_done()  # real, persisted Task
                 if next_task is not None:
                     st.session_state["recurrence_msg"] = (
                         f"'{next_task.name}' repeats {next_task.frequency.value} — "
