@@ -23,12 +23,18 @@
 **a. Constraints and priorities**
 
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
+    - My scheduler currently considers the owner's daily time budget, each task's priority (High/Medium/Low), and each task's start time ("HH:MM"). Priority decides what gets into the plan, the time budget decides how much fits, and start time orders the final plan and helps to flag overlapping tasks as conflicts.
 - How did you decide which constraints mattered most?
+    - Priority is what mattered most, on any given day the circumstances can always change. One day can be busier than the other but some tasks might be more important to get done. In some cases medicine might be something of HIGH priority that needs to get down and this could be placed later into the day and completley missed or forgotten. But with priority as the most important factor it is placed into the top tasks to look at before going onto lower priority tasks like enrichments. Next was time, because an owner only has so much time in a day, and placing to many tasks, will go over the amount of time and mess up their other plans. Using priority and time budget allow to cut down and trim the schedule to fit what matters most.
+
 
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+    - One tradeoff my scheduler makes is it takes tasks in priority order and keeps each one if it still fits in the remaning budget, otherwise skips it. It does not seatch for the combination of best tasks, to get the most things done, but rather looks for the most important and what fits in the time budget.
 - Why is that tradeoff reasonable for this scenario?
+    - Why it's reasonable in this case is because it is simple, fast, and easy to explain to the owner. It takes in the tasks that fit into the schedule based on priority, and explains the most important tasks were scheduled first, until there was not time left for other tasks. Which matters more rather than a mathematically optimal plan, that aims to fit the most tasks possible instead of what may be important. Also warning instead of auto resolving conflicts allows the user to stay in control and add or remove whatever tasks are deemed more important.
+
 
 ---
 

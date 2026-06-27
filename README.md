@@ -85,14 +85,21 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+PawPal+ adds a layer of scheduling intelligence on top of the basic data model.
+Each feature below is implemented by a specific method in `pawpal_system.py`.
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Sort by priority | `Scheduler.sort_by_priority()` | Orders tasks HIGH → LOW, tie-broken by shorter duration first. |
+| Sort by time | `Scheduler.sort_by_time()` | Orders tasks chronologically by `start_time` ("HH:MM"); unscheduled tasks sort last. Used to display the final plan in clock order. |
+| Time-budget fitting | `Scheduler.fits_in_time()` / `Scheduler.make_schedule()` | Greedily keeps tasks (in priority order) while they fit the owner's `available_minutes`; completed (DONE) tasks are skipped. |
+| Filter by status | `Scheduler.filter_by_status(status)` | Returns only tasks with a given status (e.g. PENDING or DONE). Chainable via an optional `tasks` argument. |
+| Filter by pet | `Scheduler.filter_by_pet(pet_name)` | Returns only the tasks belonging to a named pet. Chainable with `filter_by_status`. |
+| Conflict detection | `Scheduler.detect_conflicts()` | Lightweight overlap check using `start_time` + `duration_min`; returns warning strings (never raises). Back-to-back tasks are not flagged. |
+| Recurring tasks | `Task.mark_done()` / `Task.next_occurrence()` | Marking a DAILY/WEEKLY task complete auto-creates the next occurrence (due `today + 1 day` or `+ 1 week`, via `timedelta`) and attaches it to the pet. |
+
+Supporting helpers: `hhmm_to_minutes()` / `minutes_to_hhmm()` convert between
+"HH:MM" strings and minutes-since-midnight for sorting and conflict math.
 
 ## 📸 Demo Walkthrough
 

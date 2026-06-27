@@ -7,6 +7,7 @@ fill in the scheduling logic incrementally (README workflow step 4).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from enum import Enum
 
 
@@ -40,6 +41,14 @@ class Status(Enum):
     PENDING = "pending"
     DONE = "done"
     SKIPPED = "skipped"
+
+
+class Frequency(Enum):
+    """How often a task repeats. NONE means a one-off task."""
+
+    NONE = "none"
+    DAILY = "daily"
+    WEEKLY = "weekly"
 
 
 @dataclass
@@ -106,12 +115,43 @@ class Task:
     pet: Pet
     status: Status = Status.PENDING
     start_time: str = ""  # scheduled clock time, "HH:MM" (24-hour), e.g. "09:30"
+    frequency: Frequency = Frequency.NONE
+    due_date: date | None = None
     goal: str = ""
     constraints: list[str] = field(default_factory=list)
 
-    def mark_done(self) -> None:
-        """Mark this task as completed."""
+    def mark_done(self) -> Task | None:
+        """Mark this task complete; if recurring, spawn its next occurrence.
+
+        Returns the newly created next-occurrence Task (already attached to the
+        same pet), or None for a one-off (NONE) task.
+        """
         self.status = Status.DONE
+        nxt = self.next_occurrence()
+        if nxt is not None:
+            self.pet.add_task(nxt)
+        return nxt
+
+    def next_occurrence(self) -> Task | None:
+        """Build the next occurrence of a recurring task (None if one-off).
+
+        Per the brief, the new due date is today + 1 day (DAILY) or today + 1
+        week (WEEKLY), computed with timedelta. The new task starts PENDING.
+        """
+        if self.frequency == Frequency.NONE:
+            return None
+        step = timedelta(days=1) if self.frequency == Frequency.DAILY else timedelta(weeks=1)
+        return Task(
+            name=self.name,
+            duration_min=self.duration_min,
+            priority=self.priority,
+            pet=self.pet,
+            start_time=self.start_time,
+            frequency=self.frequency,
+            due_date=date.today() + step,
+            goal=self.goal,
+            constraints=list(self.constraints),  # copy so occurrences don't share
+        )
 
     def is_done(self) -> bool:
         """Return True if the task has been completed."""

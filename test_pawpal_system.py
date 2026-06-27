@@ -11,9 +11,19 @@ Assumed contracts (adjust here if you decide on different behavior):
     them into owner.available_minutes. Returns one combined plan (all pets).
 """
 
+from datetime import date, timedelta
+
 import pytest
 
-from pawpal_system import Owner, Pet, Priority, Scheduler, Status, Task
+from pawpal_system import (
+    Frequency,
+    Owner,
+    Pet,
+    Priority,
+    Scheduler,
+    Status,
+    Task,
+)
 
 
 # --- fixtures / helpers ----------------------------------------------------
@@ -298,3 +308,47 @@ def test_make_schedule_skips_done_tasks(pet):
 
     assert done not in plan
     assert pending in plan
+
+
+# --- recurring tasks -------------------------------------------------------
+
+
+def test_marking_daily_task_complete_creates_next_day_occurrence(pet):
+    task = Task("walk", 20, Priority.HIGH, pet, frequency=Frequency.DAILY)
+
+    nxt = task.mark_done()
+
+    assert task.is_done()
+    assert nxt is not None
+    assert nxt.status == Status.PENDING
+    assert nxt.due_date == date.today() + timedelta(days=1)
+    assert nxt.frequency == Frequency.DAILY
+
+
+def test_marking_weekly_task_complete_creates_next_week_occurrence(pet):
+    task = Task("groom", 30, Priority.MEDIUM, pet, frequency=Frequency.WEEKLY)
+
+    nxt = task.mark_done()
+
+    assert nxt is not None
+    assert nxt.due_date == date.today() + timedelta(weeks=1)
+
+
+def test_one_off_task_does_not_recur(pet):
+    task = Task("vet visit", 60, Priority.HIGH, pet)  # frequency defaults to NONE
+
+    nxt = task.mark_done()
+
+    assert nxt is None
+
+
+def test_recurrence_attaches_next_occurrence_to_the_pet(pet):
+    task = Task("walk", 20, Priority.HIGH, pet, frequency=Frequency.DAILY)
+    pet.add_task(task)
+    assert pet.task_count() == 1
+
+    task.mark_done()
+
+    # the original (now DONE) plus the freshly spawned occurrence
+    assert pet.task_count() == 2
+    assert any(t.status == Status.PENDING for t in pet.tasks)

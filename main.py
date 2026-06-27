@@ -6,7 +6,7 @@ Builds an owner with a couple of pets and several care tasks, then prints the
 schedule the Scheduler produces so we can eyeball the method behavior.
 """
 
-from pawpal_system import Owner, Pet, Priority, Scheduler, Status, Task
+from pawpal_system import Frequency, Owner, Pet, Priority, Scheduler, Status, Task
 
 
 def main() -> None:
@@ -80,6 +80,19 @@ def main() -> None:
             print(f"WARNING: {warning}")
     else:
         print("No scheduling conflicts.")
+
+    # --- recurring tasks ---------------------------------------------------
+    print("\n=== Recurring task ===")
+    daily_walk = Task(
+        "Evening walk", 20, Priority.MEDIUM, biscuit, frequency=Frequency.DAILY
+    )
+    biscuit.add_task(daily_walk)
+    print(f"Before: Biscuit has {biscuit.task_count()} tasks; '{daily_walk.name}' is {daily_walk.status.value}")
+    next_walk = daily_walk.mark_done()
+    print(f"After marking done: '{daily_walk.name}' is {daily_walk.status.value}")
+    if next_walk is not None:
+        print(f"Auto-created next occurrence due {next_walk.due_date} (status {next_walk.status.value})")
+    print(f"Biscuit now has {biscuit.task_count()} tasks")
 
 
 if __name__ == "__main__":

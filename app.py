@@ -1,7 +1,7 @@
 from datetime import time
 
 import streamlit as st
-from pawpal_system import Owner, Pet, Priority, Scheduler, Status, Task
+from pawpal_system import Frequency, Owner, Pet, Priority, Scheduler, Status, Task
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
@@ -41,6 +41,12 @@ At minimum, your system should:
 
 # Maps the UI's priority strings to the Priority enum the Task/Scheduler expect.
 PRIORITY_MAP = {"low": Priority.LOW, "medium": Priority.MEDIUM, "high": Priority.HIGH}
+# Maps the UI's repeat choices to the Frequency enum.
+FREQUENCY_MAP = {
+    "one-off": Frequency.NONE,
+    "daily": Frequency.DAILY,
+    "weekly": Frequency.WEEKLY,
+}
 
 st.divider()
 
@@ -110,6 +116,7 @@ else:
         priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
         # st.time_input returns a datetime.time, so no manual HH:MM parsing.
         start = st.time_input("Start time", value=time(8, 0))
+        repeat = st.selectbox("Repeat", ["one-off", "daily", "weekly"])
         # Choosing a pet here is what assigns the Task to that pet.
         pet = st.selectbox(
             "For which pet?", options=owner.pets, format_func=lambda p: p.name
@@ -123,11 +130,16 @@ else:
                 priority=PRIORITY_MAP[priority],
                 pet=pet,
                 start_time=start.strftime("%H:%M"),  # stored as "HH:MM"
+                frequency=FREQUENCY_MAP[repeat],
             )
         )
         st.rerun()
 
     tasks = owner.list_tasks()
+    # One-shot message after a recurring task spawned its next occurrence.
+    recurrence_msg = st.session_state.pop("recurrence_msg", None)
+    if recurrence_msg:
+        st.success(recurrence_msg)
     if tasks:
         st.write("Current tasks:")
 
@@ -157,6 +169,8 @@ else:
                         "start": t.start_time or "—",
                         "duration_min": t.duration_min,
                         "priority": t.priority.name,
+                        "repeat": t.frequency.value,
+                        "due": t.due_date.isoformat() if t.due_date else "—",
                         "status": t.status.value,
                     }
                     for t in shown
@@ -174,7 +188,12 @@ else:
                 format_func=lambda t: f"{t.name} ({t.pet.name}, {t.start_time or 'no time'})",
             )
             if st.button("Mark complete"):
-                to_complete.mark_done()
+                next_task = to_complete.mark_done()
+                if next_task is not None:
+                    st.session_state["recurrence_msg"] = (
+                        f"'{next_task.name}' repeats {next_task.frequency.value} — "
+                        f"next occurrence created for {next_task.due_date}."
+                    )
                 st.rerun()
     else:
         st.info("No tasks yet. Add one above.")
