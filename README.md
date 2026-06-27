@@ -69,19 +69,36 @@ Scheduled Tasks:
 
 ## 🧪 Testing PawPal+
 
+Run the full automated test suite from the project root:
+
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
 
-Sample test output:
+The suite (`test_pawpal_system.py`) covers the system's most important behaviors:
 
+- **Sorting** — `sort_by_priority` (HIGH → LOW, ties broken by shorter duration) and `sort_by_time` (chronological by `start_time`, unscheduled tasks last).
+- **Time-budget fitting** — `fits_in_time` keeps tasks within budget and drops overflow; `make_schedule` combines all pets' tasks, orders by priority, respects the budget, and skips completed (DONE) tasks.
+- **Task & pet ownership** — tasks start PENDING, `mark_done` sets DONE, adding a task to a pet increases its task count, and `Owner.list_tasks` aggregates across all pets.
+- **Filtering** — `filter_by_status` and `filter_by_pet` return the correct subsets.
+- **Conflict detection** — overlapping start times are flagged; back-to-back tasks are not.
+- **Recurring tasks** — completing a DAILY/WEEKLY task creates the next occurrence (today + 1 day / + 1 week) and attaches it to the pet; one-off tasks do not recur.
+
+Sample output from a successful run:
+
+```text
+============================= test session starts =============================
+platform win32 -- Python 3.13.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: C:\Users\qjuni\OneDrive\Desktop\CodePath\AI110\ai110-module2show-pawpal-starter
+plugins: anyio-4.13.0
+collected 25 items
+
+test_pawpal_system.py .........................                          [100%]
+
+============================= 25 passed in 0.04s ==============================
 ```
-# Paste your pytest output here
-```
+
+**Confidence Level: 4 / 5** — All 25 tests pass and exercise the core scheduling logic (priority/time sorting, budget fitting, filtering, conflict detection, recurrence) plus edge cases such as empty task lists and back-to-back times. I would like to test more on streamlit, and see what other test cases there are and this is the reason I am holding back on the fifth star. Further more in the case of adding tasks around the time of midnight there might be some confusion on the wrap around and time placement of the task and so I need to test that. While also experiementing a bit more on streamlit.
 
 ## 📐 Smarter Scheduling
 
