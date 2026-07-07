@@ -1,0 +1,93 @@
+classDiagram
+    %% PawPal+ — pet care scheduling app (FINAL: matches pawpal_system.py)
+    %% Module-level helpers (not classes): hhmm_to_minutes(str) int and
+    %% minutes_to_hhmm(int) str convert between "HH:MM" and minutes-since-midnight.
+
+    class Pet {
+        +str name
+        +int age
+        +float weight
+        +str gender
+        +bool fed
+        +bool needs_meds
+        +bool needs_grooming
+        +bool needs_enrichment
+        +list~Task~ tasks
+        +add_task(Task task) None
+        +task_count() int
+        +feed() None
+        +give_meds() None
+        +record_weight(float kg) None
+        +care_summary() str
+    }
+
+    class Owner {
+        +str name
+        +int age
+        +str gender
+        +int available_minutes
+        +list~Pet~ pets
+        +add_pet(Pet pet) None
+        +add_task(Task task) None
+        +list_tasks() list~Task~
+    }
+
+    class Task {
+        +str name
+        +int duration_min
+        +Priority priority
+        +Pet pet
+        +Status status
+        +str start_time
+        +Frequency frequency
+        +date due_date
+        +str goal
+        +list~str~ constraints
+        +mark_done() Task
+        +next_occurrence() Task
+        +is_done() bool
+    }
+
+    class Scheduler {
+        +Owner owner
+        +list~Task~ tasks
+        +make_schedule() list~Task~
+        +sort_by_priority() list~Task~
+        +sort_by_time() list~Task~
+        +filter_by_status(Status status, list~Task~ tasks) list~Task~
+        +filter_by_pet(str pet_name, list~Task~ tasks) list~Task~
+        +detect_conflicts() list~str~
+        +fits_in_time(int budget) list~Task~
+        +explain() str
+    }
+
+    class Priority {
+        <<enumeration>>
+        LOW
+        MEDIUM
+        HIGH
+    }
+
+    class Status {
+        <<enumeration>>
+        PENDING
+        DONE
+        SKIPPED
+    }
+
+    class Frequency {
+        <<enumeration>>
+        NONE
+        DAILY
+        WEEKLY
+    }
+
+    Owner "1" --> "*" Pet : owns
+    Pet "1" o-- "*" Task : has
+    Task "*" --> "1" Pet : for
+    Owner ..> Task : lists (via pets)
+    Task --> Priority : has
+    Task --> Status : has
+    Task --> Frequency : repeats
+    Scheduler --> Owner : plans for
+    Scheduler ..> Task : sorts / filters / orders

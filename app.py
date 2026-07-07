@@ -9,33 +9,22 @@ st.title("🐾 PawPal+")
 
 st.markdown(
     """
-Welcome to the PawPal+ starter app.
-
-This file is intentionally thin. It gives you a working Streamlit app so you can start quickly,
-but **it does not implement the project logic**. Your job is to design the system and build it.
-
-Use this app as your interactive demo once your backend classes/functions exist.
+**PawPal+** helps a pet owner plan a realistic day of pet care. Add your pets and
+their tasks (each with a time, duration, priority, and an optional daily/weekly
+repeat), then generate a schedule that fits your available time — ordered by
+time, with any overlapping tasks flagged as conflicts.
 """
 )
 
-with st.expander("Scenario", expanded=True):
+with st.expander("What PawPal+ can do"):
     st.markdown(
         """
-**PawPal+** is a pet care planning assistant. It helps a pet owner plan care tasks
-for their pet(s) based on constraints like time, priority, and preferences.
-
-You will design and implement the scheduling logic and connect it to this Streamlit UI.
-"""
-    )
-
-with st.expander("What you need to build", expanded=True):
-    st.markdown(
-        """
-At minimum, your system should:
-- Represent pet care tasks (what needs to happen, how long it takes, priority)
-- Represent the pet and the owner (basic info and preferences)
-- Build a plan/schedule for a day that chooses and orders tasks based on constraints
-- Explain the plan (why each task was chosen and when it happens)
+- **Sort** tasks by priority, and display the day ordered by start time
+- **Fit** tasks into your daily time budget (highest priority first)
+- **Filter** tasks by pet or completion status
+- **Flag conflicts** when two tasks overlap in time
+- **Repeat** daily/weekly tasks — completing one schedules the next occurrence
+- **Explain** why each task made it into the plan
 """
     )
 
@@ -145,9 +134,16 @@ else:
         st.success(recurrence_msg)
     if tasks:
         st.write("Current tasks:")
+        sched = Scheduler(owner)
+
+        # --- proactive conflict banner (visible while adding tasks) --------
+        conflicts = sched.detect_conflicts()
+        if conflicts:
+            st.warning(f"⚠️ {len(conflicts)} time conflict(s) detected:")
+            for c in conflicts:
+                st.write(f"- {c}")
 
         # --- filters (use the Scheduler's filter methods) ------------------
-        sched = Scheduler(owner)
         STATUS_FILTERS = {"pending": Status.PENDING, "done": Status.DONE}
         col_a, col_b = st.columns(2)
         with col_a:
@@ -242,11 +238,15 @@ if st.button("Generate schedule", disabled=not all_tasks):
                 for i, t in enumerate(plan_by_time, start=1)
             ]
         )
-        st.caption(f"Total scheduled: {total}/{owner.available_minutes} min")
+        st.metric("Scheduled", f"{total} / {owner.available_minutes} min")
 
         # Conflict warnings (overlapping start times) — informative, not fatal.
-        for warning in scheduler.detect_conflicts():
-            st.warning(f"Time conflict: {warning}")
+        conflicts = scheduler.detect_conflicts()
+        if conflicts:
+            for warning in conflicts:
+                st.warning(f"Time conflict: {warning}")
+        else:
+            st.success("No time conflicts. ✅")
 
         # Only count active tasks as "dropped" (DONE tasks are intentionally skipped).
         dropped = [t for t in all_tasks if t not in plan and t.status != Status.DONE]

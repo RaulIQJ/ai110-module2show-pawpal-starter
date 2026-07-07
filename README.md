@@ -22,6 +22,17 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## ✨ Features
+
+- **Owner & multiple pets** — create an owner and add several pets, each with their own tasks.
+- **Rich tasks** — every task has a duration, a priority (HIGH / MEDIUM / LOW), a start time (`HH:MM`), and an optional daily/weekly repeat.
+- **Priority-aware daily plan** — builds a schedule that fits your available minutes, keeping the highest-priority tasks first (`Scheduler.make_schedule`).
+- **Sorting by time** — the generated plan is shown in chronological order (`Scheduler.sort_by_time`).
+- **Filtering** — view tasks by pet or by completion status (`Scheduler.filter_by_pet` / `filter_by_status`).
+- **Conflict warnings** — overlapping task times are flagged both while adding tasks and in the schedule, without blocking you (`Scheduler.detect_conflicts`).
+- **Daily / weekly recurrence** — completing a repeating task automatically creates its next occurrence (`Task.mark_done` → `Task.next_occurrence`).
+- **Plan explanation** — see why each task was included in the day's plan (`Scheduler.explain`).
+
 ## Getting started
 
 ### Setup
@@ -120,12 +131,78 @@ Supporting helpers: `hhmm_to_minutes()` / `minutes_to_hhmm()` convert between
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+PawPal+ runs as a Streamlit app (`streamlit run app.py`). The page is organized
+top-to-bottom into four steps, and each one unlocks the next.
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+**Main UI features & what you can do**
+
+1. **Owner** — create an owner (name, age). Nothing else appears until an owner exists.
+2. **Pets** — add one or more pets (name, age, optional weight).
+3. **Tasks** — add tasks for a chosen pet, each with a duration, priority, start time, and repeat (one-off / daily / weekly). Filter the task list by pet or status, and mark a task complete.
+4. **Build Schedule** — enter your available minutes and generate the day's plan.
+
+**Example workflow**
+
+1. Create owner **Ada**.
+2. Add pets **Biscuit** and **Whiskers**.
+3. Add tasks: *Morning walk* (Biscuit, 08:00, 30 min, HIGH), *Give meds* (Whiskers, 08:15, 5 min, HIGH), *Brush coat* (Biscuit, 09:00, 15 min, MEDIUM).
+4. Set **Available minutes = 60** and click **Generate schedule**.
+5. View today's plan — ordered by time — with a conflict warning for the overlapping 08:00 and 08:15 tasks.
+
+**Key Scheduler behaviors shown**
+
+- **Priority + time-budget fitting** — the higher-priority tasks are kept until the 60-minute budget runs out; lower-priority ones are dropped.
+- **Sort by time** — the plan is displayed 08:00 → 09:00 → …
+- **Conflict warning** — *Morning walk (08:00–08:30)* overlaps *Give meds (08:15)*.
+- **Recurrence** — marking a daily task complete schedules the next day's occurrence.
+- **Explanation** — the "Why this schedule?" expander lists each scheduled task.
+
+**Sample CLI output** (`python main.py`), which exercises the same backend the UI uses:
+
+```text
+=== Today's Schedule for Ada ===
+Time budget: 60 min
+
+1. Give meds (Whiskers) - 5 min [HIGH]
+2. Morning walk (Biscuit) - 30 min [HIGH]
+3. Brush coat (Biscuit) - 15 min [MEDIUM]
+
+Total scheduled: 50/60 min
+
+Dropped (did not fit / lower priority):
+- Puzzle feeder enrichment (Whiskers) - 25 min
+
+Schedule Explanation:
+Owner: Ada, Available Minutes: 60
+Scheduled Tasks:
+- Task: Give meds, Pet: Whiskers, Duration: 5 min, Priority: HIGH, Status: pending
+- Task: Morning walk, Pet: Biscuit, Duration: 30 min, Priority: HIGH, Status: pending
+- Task: Brush coat, Pet: Biscuit, Duration: 15 min, Priority: MEDIUM, Status: pending
+
+=== All tasks sorted by start time ===
+- 08:00  Morning walk (Biscuit)
+- 08:15  Give meds (Whiskers)
+- 09:00  Brush coat (Biscuit)
+- 09:30  Puzzle feeder enrichment (Whiskers)
+
+=== Filter: Biscuit's tasks ===
+- Morning walk (08:00)
+- Brush coat (09:00)
+
+=== Filter: still pending ===
+- Morning walk (Biscuit)
+- Brush coat (Biscuit)
+- Puzzle feeder enrichment (Whiskers)
+- Give meds (Whiskers)
+
+=== Conflict check ===
+WARNING: 'Morning walk' (Biscuit, 08:00-08:30) overlaps 'Give meds' (Whiskers, starts 08:15)
+
+=== Recurring task ===
+Before: Biscuit has 3 tasks; 'Evening walk' is pending
+After marking done: 'Evening walk' is done
+Auto-created next occurrence due 2026-07-07 (status pending)
+Biscuit now has 4 tasks
+```
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
